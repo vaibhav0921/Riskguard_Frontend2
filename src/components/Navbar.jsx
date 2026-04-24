@@ -24,10 +24,11 @@ export default function Navbar({ activeTab, setActiveTab }) {
         daysLeft <= 14 ? 'var(--gold)' : 'var(--lime)';
 
   const tabs = [
-    { id: 'home', label: '🏠 Home' },
-    { id: 'rules', label: '⚙ My Rules' },
-    { id: 'guide', label: '📡 EA Setup' },
-  ];
+  { id: 'home',    label: '🏠 Home'      },
+  { id: 'rules',   label: '⚙ My Rules'   },
+  { id: 'guide',   label: '📡 EA Setup'  },
+  { id: 'contact', label: '📬 Contact'   },  // ADD THIS
+];
 
   const handleLogout = (e) => {
     e.preventDefault();

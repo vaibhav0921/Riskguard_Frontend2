@@ -12,6 +12,8 @@ import DashboardPage from './pages/DashboardPage';
 import SettingsPage  from './pages/SettingsPage';
 import EAGuidePage   from './pages/EAGuidePage';
 
+import ContactPage from './pages/ContactPage';
+
 function AppRouter() {
   // Auth now comes from Redux store
   const user     = useSelector(s => s.auth.user);
@@ -78,6 +80,7 @@ function AppRouter() {
             {activeTab === 'home'  && <DashboardPage onGoGuide={() => setActiveTab('guide')} />}
             {activeTab === 'rules' && <SettingsPage />}
             {activeTab === 'guide' && <EAGuidePage />}
+            {activeTab === 'contact' && <ContactPage />}
           </>
         );
 

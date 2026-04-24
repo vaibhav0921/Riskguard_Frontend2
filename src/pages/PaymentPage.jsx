@@ -1,50 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector }    from 'react-redux';
-import { useApp, PLANS }               from '../context/AppContext';
-import { setSubscription }             from '../store/authSlice';
-import { registerUser }                from '../api';
+import { useDispatch, useSelector } from 'react-redux';
+import { useApp, PLANS } from '../context/AppContext';
+import { setSubscription } from '../store/authSlice';
+import { registerUser } from '../api';
 import Spinner from '../components/Spinner';
 
 // ── RAZORPAY CONFIG ──────────────────────────────────────────────
 // Replace with your actual Key ID. Key Secret NEVER goes in frontend.
-const RAZORPAY_KEY_ID = 'rzp_test_SfitmtfFH9SX9K';
+const RAZORPAY_KEY_ID = 'rzp_live_ShDmAXZ3W5QwZj';
 // ────────────────────────────────────────────────────────────────
 
 const LockIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2"/>
-    <path d="M7 11V7a5 5 0 0110 0v4"/>
+    <rect x="3" y="11" width="18" height="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0110 0v4" />
   </svg>
 );
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
     if (document.getElementById('razorpay-script')) { resolve(true); return; }
-    const script    = document.createElement('script');
-    script.id       = 'razorpay-script';
-    script.src      = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload   = () => resolve(true);
-    script.onerror  = () => resolve(false);
+    const script = document.createElement('script');
+    script.id = 'razorpay-script';
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
 }
 
 export default function PaymentPage({ onBack, onSuccess }) {
   const dispatch = useDispatch();
-  const user     = useSelector(s => s.auth.user);
+  const user = useSelector(s => s.auth.user);
 
   const { selectedPlan, showToast } = useApp();
   const plan = PLANS[selectedPlan];
 
-  const [loading,      setLoading]      = useState(false);
+  const [loading, setLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
-  const [scriptError,  setScriptError]  = useState(false);
+  const [scriptError, setScriptError] = useState(false);
 
   useEffect(() => {
     loadRazorpayScript().then(ok => {
       if (ok) setScriptLoaded(true);
-      else    setScriptError(true);
+      else setScriptError(true);
     });
   }, []);
 
@@ -61,18 +61,18 @@ export default function PaymentPage({ onBack, onSuccess }) {
       const expiryISO = expiry.toISOString();
 
       const options = {
-        key:         RAZORPAY_KEY_ID,
-        amount:      plan.price * 100,     // paise
-        currency:    'INR',
-        name:        'RiskGuard',
+        key: RAZORPAY_KEY_ID,
+        amount: plan.price * 100,     // paise
+        currency: 'INR',
+        name: 'RiskGuard',
         description: `${plan.name} Plan — ${plan.duration}`,
         prefill: {
           email: user?.email || '',
-          name:  user?.email || '',
+          name: user?.email || '',
         },
         notes: {
           accountNumber: user?.account,
-          planId:        selectedPlan,
+          planId: selectedPlan,
         },
         theme: { color: '#a3e635' },
 
@@ -91,9 +91,9 @@ export default function PaymentPage({ onBack, onSuccess }) {
 
           // Save subscription to Redux store + localStorage
           dispatch(setSubscription({
-            planId:      selectedPlan,
-            planName:    plan.name,
-            expiryDate:  expiryISO,
+            planId: selectedPlan,
+            planName: plan.name,
+            expiryDate: expiryISO,
             activatedAt: new Date().toISOString(),
           }));
 
@@ -139,7 +139,7 @@ export default function PaymentPage({ onBack, onSuccess }) {
             marginBottom: 28, padding: 0, transition: 'color 0.2s',
           }}
           onMouseOver={e => e.currentTarget.style.color = 'var(--lime)'}
-          onMouseOut={e  => e.currentTarget.style.color = 'var(--muted)'}
+          onMouseOut={e => e.currentTarget.style.color = 'var(--muted)'}
         >
           ← Back to plans
         </button>

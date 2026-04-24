@@ -1,61 +1,50 @@
 import React, { useState } from 'react';
-import { useDispatch }      from 'react-redux';
-import { useApp }           from '../context/AppContext';
-import { loginAction }      from '../store/authSlice';
-import { setSubscription }  from '../store/authSlice';
-import { validateUser }     from '../api';
+import { useDispatch } from 'react-redux';
+import { loginAction } from '../store/authSlice';
+import { validateUser } from '../api';
 import Spinner from '../components/Spinner';
-
-const ShieldIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-    stroke="#0d0f14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-  </svg>
-);
 
 export default function LoginPage({ onSuccess, onNeedPlans }) {
   const dispatch = useDispatch();
-  const { activateSubscription } = useApp();   // still needed for plan flow
-
-  const [email,   setEmail]   = useState('');
+  const [email, setEmail] = useState('');
   const [account, setAccount] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
     if (!email.trim() || !account.trim()) {
-      setError('Please enter your email and MT5 account number.');
+      setError('Please enter both your email and MT5 account number.');
       return;
     }
+
     setLoading(true);
     try {
-      const res  = await validateUser(email.trim(), account.trim());
+      const res = await validateUser(email.trim(), account.trim());
       const data = res.data;
 
-      // Save user identity to Redux store (+ localStorage via slice)
-      dispatch(loginAction({ email: email.trim(), account: account.trim() }));
-
       if (data.active) {
-        // User exists in DB — hydrate their real subscription into Redux
-        const planMap = { BASIC: 'basic', PRO: 'pro', ADVANCED: 'advanced' };
-        dispatch(setSubscription({
-          planId:      planMap[data.plan] || 'pro',
-          planName:    data.plan,
-          expiryDate:  data.expiryDate,
-          activatedAt: new Date().toISOString(),
-        }));
-        onSuccess();       // go straight to dashboard
+        // Valid user with active subscription
+        dispatch(loginAction({ email: email.trim(), account: account.trim() }));
+        onSuccess();
+
+      } else if (data.message?.includes('different email')) {
+        // MT5 account belongs to someone else — hard block
+        setError(data.message);
+
       } else {
-        onNeedPlans();     // new user — go to plan selection
-      }
-    } catch (err) {
-      if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED') {
+        // New account, expired, or not registered → go to plans
         dispatch(loginAction({ email: email.trim(), account: account.trim() }));
         onNeedPlans();
+      }
+
+    } catch (err) {
+      if (err.code === 'ERR_NETWORK') {
+        setError('Cannot reach server. Please try again.');
       } else {
-        setError(err.response?.data?.message || 'Could not connect. Please try again.');
+        setError('Something went wrong. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -78,12 +67,15 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
           margin: '0 auto 16px',
           boxShadow: '0 8px 32px rgba(163,230,53,0.4)',
         }}>
-          <ShieldIcon />
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+            stroke="#0d0f14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
         </div>
-        <h1 style={{ fontSize: 30, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
+        <h1 style={{ fontSize: 30, fontWeight: 800, color: '#f1f5f9', marginBottom: 6 }}>
           RiskGuard
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--muted)' }}>
+        <p style={{ fontSize: 14, color: '#94a3b8' }}>
           Intelligent MT5 Risk Management
         </p>
       </div>
@@ -93,10 +85,10 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
         width: '100%', maxWidth: 420,
         borderRadius: 28, padding: 32,
       }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
           Sign in to your account
         </h2>
-        <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 28 }}>
+        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 28 }}>
           Enter your email and MT5 account number
         </p>
 
@@ -124,12 +116,14 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
                 value={account}
                 onChange={e => setAccount(e.target.value)}
               />
-              <p style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 6 }}>
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
                 Find this in your MetaTrader 5 terminal — top left corner
               </p>
             </div>
 
-            {error && <div className="error-box">{error}</div>}
+            {error && (
+              <div className="error-box">{error}</div>
+            )}
 
             <button
               type="submit"
@@ -145,7 +139,7 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
       </div>
 
       <p className="anim-fade-up d2" style={{
-        fontSize: 11, color: 'var(--muted2)', marginTop: 24, textAlign: 'center',
+        fontSize: 11, color: '#475569', marginTop: 24, textAlign: 'center',
       }}>
         🔒 Protected by 256-bit encryption · SOC 2 Compliant
       </p>

@@ -62,7 +62,7 @@ export default function PaymentPage({ onBack, onSuccess }) {
 
       const options = {
         key: RAZORPAY_KEY_ID,
-        amount: plan.price * 100,     // paise
+        amount: plan.price *100,     // paise
         currency: 'INR',
         name: 'RiskGuard',
         description: `${plan.name} Plan — ${plan.duration}`,
@@ -86,7 +86,9 @@ export default function PaymentPage({ onBack, onSuccess }) {
               expiryISO
             );
           } catch (err) {
-            console.warn('Backend register failed (activating locally):', err.message);
+            setLoading(false);
+            showToast(`Payment received (ID: ${razorpayResponse.razorpay_payment_id}) but account activation failed. Please contact support.`, 'error');
+            return; // ← stays on PaymentPage, user can contact you with their payment ID
           }
 
           // Save subscription to Redux store + localStorage

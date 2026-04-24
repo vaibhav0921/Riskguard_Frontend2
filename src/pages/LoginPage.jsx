@@ -143,6 +143,9 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
       }}>
         🔒 Protected by 256-bit encryption · SOC 2 Compliant
       </p>
+      <p style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, textAlign: 'center' }}>
+        By continuing you agree to our Terms of Service and Privacy Policy
+      </p>
 
     </div>
   );

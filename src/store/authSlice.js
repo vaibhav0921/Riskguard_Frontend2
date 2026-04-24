@@ -1,13 +1,25 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const saved = () => {
-  try { return JSON.parse(localStorage.getItem('rg_user')); }
-  catch { return null; }
+  try {
+    const data = JSON.parse(localStorage.getItem('rg_user'));
+    // Must have both email and account to be valid
+    if (!data?.email || !data?.account) return null;
+    return data;
+  } catch {
+    return null;
+  }
 };
 
 const savedSub = () => {
-  try { return JSON.parse(localStorage.getItem('rg_sub')); }
-  catch { return null; }
+  try {
+    const data = JSON.parse(localStorage.getItem('rg_sub'));
+    // Must have expiryDate to be valid
+    if (!data?.expiryDate) return null;
+    return data;
+  } catch {
+    return null;
+  }
 };
 
 const authSlice = createSlice({

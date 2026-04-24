@@ -4,8 +4,16 @@ import { loginAction } from '../store/authSlice';
 import { validateUser } from '../api';
 import Spinner from '../components/Spinner';
 
+const ShieldIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+    stroke="#0d0f14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
 export default function LoginPage({ onSuccess, onNeedPlans }) {
   const dispatch = useDispatch();
+
   const [email, setEmail] = useState('');
   const [account, setAccount] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +24,7 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
     setError('');
 
     if (!email.trim() || !account.trim()) {
-      setError('Please enter both your email and MT5 account number.');
+      setError('Please enter your email and MT5 account number.');
       return;
     }
 
@@ -25,26 +33,27 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
       const res = await validateUser(email.trim(), account.trim());
       const data = res.data;
 
-      if (data.active) {
-        // Valid user with active subscription
-        dispatch(loginAction({ email: email.trim(), account: account.trim() }));
-        onSuccess();
-
-      } else if (data.message?.includes('different email')) {
-        // MT5 account belongs to someone else — hard block
+      if (data.message?.includes('different email') ||
+        data.message?.includes('different MT5')) {
+        // Security block — MT5 account belongs to someone else
         setError(data.message);
+        return;
+      }
 
+      // Save user to Redux store
+      dispatch(loginAction({ email: email.trim(), account: account.trim() }));
+
+      if (data.active) {
+        onSuccess();      // active subscription → dashboard
       } else {
-        // New account, expired, or not registered → go to plans
-        dispatch(loginAction({ email: email.trim(), account: account.trim() }));
-        onNeedPlans();
+        onNeedPlans();    // no subscription → plans
       }
 
     } catch (err) {
-      if (err.code === 'ERR_NETWORK') {
-        setError('Cannot reach server. Please try again.');
+      if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED') {
+        setError('Cannot reach server. Please check your connection.');
       } else {
-        setError('Something went wrong. Please try again.');
+        setError(err.response?.data?.message || 'Something went wrong. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -67,10 +76,7 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
           margin: '0 auto 16px',
           boxShadow: '0 8px 32px rgba(163,230,53,0.4)',
         }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-            stroke="#0d0f14" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
+          <ShieldIcon />
         </div>
         <h1 style={{ fontSize: 30, fontWeight: 800, color: '#f1f5f9', marginBottom: 6 }}>
           RiskGuard
@@ -142,9 +148,6 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
         fontSize: 11, color: '#475569', marginTop: 24, textAlign: 'center',
       }}>
         🔒 Protected by 256-bit encryption · SOC 2 Compliant
-      </p>
-      <p style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, textAlign: 'center' }}>
-        By continuing you agree to our Terms of Service and Privacy Policy
       </p>
 
     </div>

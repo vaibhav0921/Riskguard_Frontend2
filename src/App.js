@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { AppProvider, useApp } from './context/AppContext';
-import { logoutAction } from './store/authSlice';
 import Toast from './components/Toast';
 import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
@@ -11,40 +10,78 @@ import SuccessPage from './pages/SuccessPage';
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
 import EAGuidePage from './pages/EAGuidePage';
-import TermsPage from './pages/TermsPage';
-import ContactPage from './pages/ContactPage';
 
 function AppRouter() {
-  // Auth now comes from Redux store
+  const { setLogoutCallback } = useApp();
   const user = useSelector(s => s.auth.user);
   const subscription = useSelector(s => s.auth.subscription);
-  const dispatch = useDispatch();
 
-  // AppContext still needed for toast, selectedPlan, activateSubscription
-  const { setLogoutCallback } = useApp();
-
-  const [route, setRoute] = useState('login');
+  const [route, setRoute] = useState(null); // null = not booted yet
   const [activeTab, setActiveTab] = useState('home');
 
-  const goTo = (r) => setRoute(r);
-
-  // Wire logout to clear Redux state + reset route
+  // Wire logout → back to login
   useEffect(() => {
     setLogoutCallback(() => {
-      dispatch(logoutAction());
       setRoute('login');
       setActiveTab('home');
     });
-  }, [setLogoutCallback, dispatch]);
+  }, [setLogoutCallback]);
 
-  // Restore session on mount if user is already in Redux/localStorage
+  // Boot — decide initial route based on auth state
   useEffect(() => {
-    const hasActiveSub = subscription &&
-      subscription.expiryDate &&
-      new Date(subscription.expiryDate) > new Date();
-    goTo(hasActiveSub ? 'app' : 'plans');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!user || !user.email || !user.account) {
+      // No valid user → login
+      setRoute('login');
+      return;
+    }
+
+    if (!subscription || !subscription.expiryDate) {
+      // Logged in but no subscription → plans
+      setRoute('plans');
+      return;
+    }
+
+    const isExpired = new Date(subscription.expiryDate) < new Date();
+    if (isExpired) {
+      // Subscription expired → plans
+      setRoute('plans');
+      return;
+    }
+
+    // All good → dashboard
+    setRoute('app');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show spinner while booting
+  if (route === null) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100vh', background: '#0d0f14',
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%',
+          border: '3px solid rgba(163,230,53,0.2)',
+          borderTopColor: '#a3e635',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Route guard helper — redirect to login if not authenticated
+  const requireAuth = (component) => {
+    if (!user || !user.email) {
+      return (
+        <LoginPage
+          onSuccess={() => setRoute('app')}
+          onNeedPlans={() => setRoute('plans')}
+        />
+      );
+    }
+    return component;
+  };
 
   const renderPage = () => {
     switch (route) {
@@ -52,46 +89,46 @@ function AppRouter() {
       case 'login':
         return (
           <LoginPage
-            onSuccess={() => goTo('app')}
-            onNeedPlans={() => goTo('plans')}
+            onSuccess={() => setRoute('app')}
+            onNeedPlans={() => setRoute('plans')}
           />
         );
 
       case 'plans':
-        return <PlansPage onContinue={() => goTo('payment')} />;
+        return requireAuth(
+          <PlansPage onContinue={() => setRoute('payment')} />
+        );
 
       case 'payment':
-        return (
+        return requireAuth(
           <PaymentPage
-            onBack={() => goTo('plans')}
-            onSuccess={() => goTo('success')}
+            onBack={() => setRoute('plans')}
+            onSuccess={() => setRoute('success')}
           />
         );
 
       case 'success':
-        return (
+        return requireAuth(
           <SuccessPage
-            onDashboard={() => { setActiveTab('home'); goTo('app'); }}
+            onDashboard={() => { setActiveTab('home'); setRoute('app'); }}
           />
         );
 
       case 'app':
-        return (
+        return requireAuth(
           <>
             <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
             {activeTab === 'home' && <DashboardPage onGoGuide={() => setActiveTab('guide')} />}
             {activeTab === 'rules' && <SettingsPage />}
             {activeTab === 'guide' && <EAGuidePage />}
-            {activeTab === 'contact' && <ContactPage />}
-            {activeTab === 'terms' && <TermsPage />}
           </>
         );
 
       default:
         return (
           <LoginPage
-            onSuccess={() => goTo('app')}
-            onNeedPlans={() => goTo('plans')}
+            onSuccess={() => setRoute('app')}
+            onNeedPlans={() => setRoute('plans')}
           />
         );
     }
@@ -109,7 +146,6 @@ function AppRouter() {
 
 export default function App() {
   return (
-    // AppProvider kept for toast + plan selection state during checkout flow
     <AppProvider>
       <AppRouter />
     </AppProvider>

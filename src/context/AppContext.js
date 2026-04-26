@@ -6,22 +6,22 @@ const AppContext = createContext(null);
 
 export const PLANS = {
   basic: {
-    id: 'basic', name: 'Basic', price: 12, currency: '$',
+    id: 'basic', name: 'Basic', price: 0, currency: '₹',
     months: 1, duration: '1 month access', icon: '🔰', badge: 'BASIC',
     color: 'var(--sky)',
-    features: ['Consecutive loss rule','Daily loss % limit','Max trades per day','Auto daily reset'],
+    features: ['Consecutive loss rule', 'Daily loss % limit', 'Max trades per day', 'Auto daily reset'],
   },
   pro: {
-    id: 'pro', name: 'Pro', price: 19, currency: '$',
+    id: 'pro', name: 'Pro', price: 1399, currency: '₹',
     months: 2, duration: '2 months access', icon: '⚡', badge: 'PRO',
     color: 'var(--lime)', featured: true,
-    features: ['Everything in Basic','Priority support','Rule override via app','Live status dashboard'],
+    features: ['Everything in Basic', 'Priority support', 'Rule override via app', 'Live status dashboard'],
   },
   advanced: {
-    id: 'advanced', name: 'Advanced', price: 59, currency: '$',
+    id: 'advanced', name: 'Advanced', price: 1999, currency: '₹',
     months: 6, duration: '6 months access', icon: '🏆', badge: 'ADV',
     color: 'var(--gold)',
-    features: ['Everything in Pro','Unlimited accounts','Advanced analytics','Dedicated support'],
+    features: ['Everything in Pro', 'Unlimited accounts', 'Advanced analytics', 'Dedicated support'],
   },
 };
 
@@ -39,11 +39,11 @@ export function formatExpiry(expiryDateISO) {
 }
 
 export function AppProvider({ children }) {
-  const dispatch    = useDispatch();
+  const dispatch = useDispatch();
   const onLogoutRef = useRef(null);
 
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [toast,        setToast]        = useState(null);
+  const [toast, setToast] = useState(null);
 
   const login = useCallback((email, account) => {
     dispatch(loginAction({ email, account }));
@@ -69,8 +69,8 @@ export function AppProvider({ children }) {
     expiry.setMonth(expiry.getMonth() + plan.months);
     dispatch(setSubscription({
       planId,
-      planName:    plan.name,
-      expiryDate:  expiry.toISOString(),
+      planName: plan.name,
+      expiryDate: expiry.toISOString(),
       activatedAt: new Date().toISOString(),
     }));
   }, [dispatch]);

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PLANS } from '../context/AppContext';
 import { useApp } from '../context/AppContext';
 
 const CheckIcon = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+    <polyline points="20 6 9 17 4 12" />
   </svg>
 );
 
@@ -35,7 +35,7 @@ function PlanCard({ plan, selected, onSelect }) {
             width: 48, height: 48, borderRadius: 14, fontSize: 22,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: selected
-              ? `${plan.color.replace('var(--','rgba(').replace(')',',0.15)')}` 
+              ? `${plan.color.replace('var(--', 'rgba(').replace(')', ',0.15)')}`
               : 'rgba(255,255,255,0.06)',
           }}>
             {plan.icon}
@@ -90,6 +90,10 @@ function PlanCard({ plan, selected, onSelect }) {
 export default function PlansPage({ onContinue }) {
   const { setSelectedPlan } = useApp();
   const [selected, setSelected] = useState(null);
+
+  // Clear session flag — user is choosing a plan, not on dashboard.
+  // This ensures refresh here goes back to login, not dashboard.
+  useEffect(() => { localStorage.removeItem('rg_session'); }, []);
 
   const handleSelect = (planId) => {
     setSelected(planId);

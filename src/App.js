@@ -1,28 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector }   from 'react-redux';
-import { AppProvider, useApp }        from './context/AppContext';
-import { logoutAction }               from './store/authSlice';
-import Toast         from './components/Toast';
-import Navbar        from './components/Navbar';
-import LoginPage     from './pages/LoginPage';
-import PlansPage     from './pages/PlansPage';
-import PaymentPage   from './pages/PaymentPage';
-import SuccessPage   from './pages/SuccessPage';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppProvider, useApp } from './context/AppContext';
+import { logoutAction, setSubscription } from './store/authSlice';
+import Toast from './components/Toast';
+import Navbar from './components/Navbar';
+import LoginPage from './pages/LoginPage';
+import PlansPage from './pages/PlansPage';
+import PaymentPage from './pages/PaymentPage';
+import SuccessPage from './pages/SuccessPage';
 import DashboardPage from './pages/DashboardPage';
-import SettingsPage  from './pages/SettingsPage';
-import EAGuidePage   from './pages/EAGuidePage';
-import TermsPage     from './pages/TermsPage';
+import SettingsPage from './pages/SettingsPage';
+import EAGuidePage from './pages/EAGuidePage';
 import ContactPage from './pages/ContactPage';
+import TermsPage from './pages/TermsPage';
 
 function AppRouter() {
   // Auth now comes from Redux store
-  const user     = useSelector(s => s.auth.user);
+  const user = useSelector(s => s.auth.user);
+  const subscription = useSelector(s => s.auth.subscription);
   const dispatch = useDispatch();
 
   // AppContext still needed for toast, selectedPlan, activateSubscription
   const { setLogoutCallback } = useApp();
 
-  const [route,     setRoute]     = useState('login');
+  // Restore session only if user was previously on the dashboard (not mid-payment).
+  // localStorage 'rg_session' is set to 'active' only after successful login+subscription.
+  // It is cleared when user is on plans/payment flow so refresh there goes to login.
+  const wasOnDashboard = localStorage.getItem('rg_session') === 'active';
+
+  const [route, setRoute] = useState(wasOnDashboard ? 'app' : 'login');
   const [activeTab, setActiveTab] = useState('home');
 
   const goTo = (r) => setRoute(r);
@@ -31,18 +37,12 @@ function AppRouter() {
   useEffect(() => {
     setLogoutCallback(() => {
       dispatch(logoutAction());
+      localStorage.removeItem('rg_session');
       setRoute('login');
       setActiveTab('home');
     });
   }, [setLogoutCallback, dispatch]);
 
-  // Restore session on mount if user is already in Redux/localStorage
-  useEffect(() => {
-    if (user && route === 'login') {
-      goTo('app');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const renderPage = () => {
     switch (route) {
@@ -77,7 +77,7 @@ function AppRouter() {
         return (
           <>
             <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-            {activeTab === 'home'  && <DashboardPage onGoGuide={() => setActiveTab('guide')} />}
+            {activeTab === 'home' && <DashboardPage onGoGuide={() => setActiveTab('guide')} />}
             {activeTab === 'rules' && <SettingsPage />}
             {activeTab === 'guide' && <EAGuidePage />}
             {activeTab === 'contact' && <ContactPage />}
@@ -98,7 +98,7 @@ function AppRouter() {
   return (
     <>
       <div className="ambient" aria-hidden="true" />
-      <div className="noise"   aria-hidden="true" />
+      <div className="noise" aria-hidden="true" />
       {renderPage()}
       <Toast />
     </>

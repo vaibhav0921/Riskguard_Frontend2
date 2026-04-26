@@ -28,6 +28,7 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
       if (data.active) {
         // Valid user with active subscription
         dispatch(loginAction({ email: email.trim(), account: account.trim() }));
+        localStorage.setItem('rg_session', 'active'); // ← ADDED: keep session on refresh
         onSuccess();
 
       } else if (data.message?.includes('different email')) {
@@ -37,6 +38,7 @@ export default function LoginPage({ onSuccess, onNeedPlans }) {
       } else {
         // New account, expired, or not registered → go to plans
         dispatch(loginAction({ email: email.trim(), account: account.trim() }));
+        localStorage.removeItem('rg_session'); // ← ADDED: no session until payment done
         onNeedPlans();
       }
 

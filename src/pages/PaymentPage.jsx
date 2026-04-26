@@ -77,8 +77,11 @@ export default function PaymentPage({ onBack, onSuccess }) {
         theme: { color: '#a3e635' },
 
         handler: async function (razorpayResponse) {
+          // Payment confirmed by Razorpay — now register in backend.
+          // CRITICAL: do NOT call onSuccess() until backend confirms.
+          // If we skip this, user lands on dashboard with no DB record
+          // and sees "Waiting for EA connection" with a 404 from /api/status.
           try {
-            // Register user in DB after confirmed payment
             await registerUser(
               user.email,
               user.account,
@@ -86,10 +89,19 @@ export default function PaymentPage({ onBack, onSuccess }) {
               expiryISO
             );
           } catch (err) {
-            console.warn('Backend register failed (activating locally):', err.message);
+            // Backend registration failed — payment was taken but account
+            // not created. Show error and stay on PaymentPage so user can
+            // contact support with their Razorpay payment ID.
+            setLoading(false);
+            showToast(
+              `Payment received (ID: ${razorpayResponse.razorpay_payment_id}) but account activation failed. Please contact support.`,
+              'error'
+            );
+            console.error('registerUser failed after payment:', err);
+            return; // DO NOT proceed to dashboard
           }
 
-          // Save subscription to Redux store + localStorage
+          // Backend confirmed — now safe to activate locally
           dispatch(setSubscription({
             planId: selectedPlan,
             planName: plan.name,
@@ -97,6 +109,8 @@ export default function PaymentPage({ onBack, onSuccess }) {
             activatedAt: new Date().toISOString(),
           }));
 
+          // Mark session active so dashboard refresh keeps user logged in
+          localStorage.setItem('rg_session', 'active');
           showToast('Payment successful! Welcome to RiskGuard 🎉', 'success');
           setLoading(false);
           onSuccess();

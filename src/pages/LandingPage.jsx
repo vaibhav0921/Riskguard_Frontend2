@@ -157,7 +157,7 @@ function Navbar({ onCTA }) {
     );
 }
 
-function Hero({ onCTA }) {
+function Hero({ onCTA, onTryFree }) {
     const [mounted, setMounted] = useState(false);
     const isMobile = useMobile();  // ADDED
     useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
@@ -240,8 +240,8 @@ function Hero({ onCTA }) {
                     opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(24px)", transition: "all 0.7s ease 0.3s"
                 }}>
                     <button onClick={onCTA} style={{ background: "linear-gradient(135deg, #00D4FF, #0077AA)", color: "white", border: "none", padding: "15px 36px", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>Start protecting my account →</button>
-                    <button onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} style={{ background: "transparent", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", padding: "15px 28px", borderRadius: "10px", fontSize: "15px", cursor: "pointer" }}>See how it works</button>
-                </div>
+                    <button onClick={onTryFree} style={{ background: "rgba(163,230,53,0.1)", color: "#a3e635", border: "1px solid rgba(163,230,53,0.3)", padding: "15px 28px", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>🎁 Try free for 7 days</button>
+                    <button onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} style={{ background: "transparent", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", padding: "15px 28px", borderRadius: "10px", fontSize: "15px", cursor: "pointer" }}>See how it works</button>                </div>
 
                 <div style={{ display: "flex", gap: isMobile ? "28px" : "48px", justifyContent: "center", opacity: mounted ? 1 : 0, transition: "all 0.7s ease 0.4s" }}>
                     {[["500+", "Active traders"], ["₹0", "Lost to EA bugs"], ["10s", "Rule sync speed"]].map(([n, l]) => (
@@ -546,8 +546,9 @@ function Footer() {
     );
 }
 
-export default function LandingPage({ onGetStarted }) {
+export default function LandingPage({ onGetStarted, onTryFree }) {
     const handleCTA = () => { if (onGetStarted) onGetStarted(); };
+    const handleTryFree = () => { if (onTryFree) onTryFree(); };
     useEffect(() => {
         document.documentElement.style.background = "#040814";
         document.body.style.background = "#040814";
@@ -567,7 +568,7 @@ export default function LandingPage({ onGetStarted }) {
                 section { margin-top: -1px; }
             `}</style>
             <Navbar onCTA={handleCTA} />
-            <Hero onCTA={handleCTA} />
+            <Hero onCTA={handleCTA} onTryFree={handleTryFree} />
             <Problems />
             <Features />
             <HowItWorks />

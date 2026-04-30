@@ -29,4 +29,11 @@ export const fetchStatus = (email, account) =>
 export const registerUser = (email, accountNumber, plan, paymentRef) =>
   api.post('/api/register', { email, accountNumber, plan, paymentRef });
 
+export const checkTrialEligibility = (account) =>
+  api.get('/api/trial/eligibility', { params: { account } });
+ 
+// POST /api/trial/activate
+export const activateTrial = (email, account) =>
+  api.post('/api/trial/activate', { email, account });
+
 export default api;

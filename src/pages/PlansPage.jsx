@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { PLANS } from '../context/AppContext';
 import { useApp } from '../context/AppContext';
+import { useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
+import { loginAction } from '../store/authSlice';
+import { checkTrialEligibility, activateTrial } from '../api';
+import Spinner from '../components/Spinner';
 
 const CheckIcon = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
@@ -15,8 +20,6 @@ function PlanCard({ plan, selected, onSelect }) {
 
   return (
     <div className={selectedStyle} onClick={() => onSelect(plan.id)} style={{ position: 'relative' }}>
-
-      {/* Popular badge */}
       {plan.featured && (
         <div style={{ position: 'absolute', top: 16, right: 16 }}>
           <span className="badge badge-lime">Most Popular</span>
@@ -27,8 +30,6 @@ function PlanCard({ plan, selected, onSelect }) {
           <span className="badge badge-gold">Best Deal</span>
         </div>
       )}
-
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
@@ -48,20 +49,13 @@ function PlanCard({ plan, selected, onSelect }) {
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{
-            fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26,
-            color: selected ? plan.color : 'var(--text)',
-          }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: selected ? plan.color : 'var(--text)' }}>
             {plan.currency}{plan.price}
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted)' }}>one-time</div>
         </div>
       </div>
-
-      {/* Divider */}
       <div style={{ height: 1, background: selected ? `${plan.color}22` : 'var(--border)', marginBottom: 14 }} />
-
-      {/* Features */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px' }}>
         {plan.features.map((f, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
@@ -70,16 +64,8 @@ function PlanCard({ plan, selected, onSelect }) {
           </div>
         ))}
       </div>
-
-      {/* Selected check circle */}
       {selected && (
-        <div style={{
-          position: 'absolute', bottom: 16, right: 16,
-          width: 24, height: 24, borderRadius: '50%',
-          background: plan.color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#0d0f14',
-        }}>
+        <div style={{ position: 'absolute', bottom: 16, right: 16, width: 24, height: 24, borderRadius: '50%', background: plan.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0d0f14' }}>
           <CheckIcon />
         </div>
       )}
@@ -87,17 +73,126 @@ function PlanCard({ plan, selected, onSelect }) {
   );
 }
 
-export default function PlansPage({ onContinue }) {
-  const { setSelectedPlan } = useApp();
-  const [selected, setSelected] = useState(null);
+function TrialCard({ onActivate, loading, ineligible }) {
+  return (
+    <div style={{
+      borderRadius: 18,
+      padding: '24px 24px 20px',
+      background: ineligible
+        ? 'rgba(255,255,255,0.02)'
+        : 'linear-gradient(135deg, rgba(163,230,53,0.08), rgba(163,230,53,0.03))',
+      border: ineligible
+        ? '1px solid rgba(255,255,255,0.08)'
+        : '1.5px solid rgba(163,230,53,0.3)',
+      position: 'relative',
+      opacity: ineligible ? 0.5 : 1,
+    }}>
+      {!ineligible && (
+        <div style={{
+          position: 'absolute', top: -12, left: 20,
+          background: 'var(--lime)', color: '#0d0f14',
+          fontSize: 11, fontWeight: 700, padding: '3px 14px',
+          borderRadius: 20, letterSpacing: '0.5px',
+        }}>FREE TRIAL</div>
+      )}
 
-  // Clear session flag — user is choosing a plan, not on dashboard.
-  // This ensures refresh here goes back to login, not dashboard.
-  useEffect(() => { localStorage.removeItem('rg_session'); }, []);
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(163,230,53,0.12)' }}>
+            🎁
+          </div>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: 'var(--text)', marginBottom: 2 }}>
+              Free Trial
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)' }}>7 days · one per MT5 account</div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: ineligible ? 'var(--muted)' : 'var(--lime)' }}>
+            ₹0
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>no card needed</div>
+        </div>
+      </div>
+
+      <div style={{ height: 1, background: ineligible ? 'var(--border)' : 'rgba(163,230,53,0.15)', marginBottom: 14 }} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', marginBottom: 18 }}>
+        {['All 3 risk rules', 'Dashboard access', 'EA monitoring', 'Real-time sync', 'Daily auto-reset', '7-day access'].map((f, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+            <span style={{ color: ineligible ? 'var(--muted)' : 'var(--lime)', flexShrink: 0 }}><CheckIcon /></span>
+            {f}
+          </div>
+        ))}
+      </div>
+
+      {ineligible ? (
+        <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--muted)', padding: '10px 0' }}>
+          ✗ Free trial already used for this MT5 account
+        </div>
+      ) : (
+        <button
+          onClick={onActivate}
+          disabled={loading}
+          style={{
+            width: '100%', padding: '13px', borderRadius: 10,
+            fontSize: 14, fontWeight: 700, cursor: loading ? 'default' : 'pointer',
+            background: 'var(--lime)', color: '#0d0f14', border: 'none',
+            opacity: loading ? 0.7 : 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          {loading ? <><Spinner /> Activating...</> : '🎁 Start Free Trial →'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function PlansPage({ onContinue, onTrialSuccess }) {
+  const { setSelectedPlan } = useApp();
+  const user = useSelector(s => s.auth.user);
+  const dispatch = useDispatch();
+
+  const [selected, setSelected] = useState(null);
+  const [trialEligible, setTrialEligible] = useState(null); // null = loading
+  const [trialLoading, setTrialLoading] = useState(false);
+  const [trialError, setTrialError] = useState('');
+
+  useEffect(() => {
+    localStorage.removeItem('rg_session');
+    // Check trial eligibility for this MT5 account
+    if (user?.account) {
+      checkTrialEligibility(user.account)
+        .then(res => setTrialEligible(res.data.eligible))
+        .catch(() => setTrialEligible(false));
+    } else {
+      setTrialEligible(false);
+    }
+  }, [user]);
 
   const handleSelect = (planId) => {
     setSelected(planId);
     setSelectedPlan(planId);
+  };
+
+  const handleTrialActivate = async () => {
+    setTrialError('');
+    setTrialLoading(true);
+    try {
+      const res = await activateTrial(user.email, user.account);
+      const data = res.data;
+      // Dispatch subscription info to Redux
+      dispatch(loginAction({ email: user.email, account: user.account }));
+      localStorage.setItem('rg_session', 'active');
+      if (onTrialSuccess) onTrialSuccess();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to activate trial. Please try again.';
+      setTrialError(msg);
+    } finally {
+      setTrialLoading(false);
+    }
   };
 
   return (
@@ -115,10 +210,31 @@ export default function PlansPage({ onContinue }) {
           </p>
         </div>
 
-        {/* Plan cards */}
+        {/* Trial card — shown at top if eligible or already used */}
+        {trialEligible !== null && (
+          <div className="anim-fade-up d1" style={{ marginBottom: 20 }}>
+            <TrialCard
+              onActivate={handleTrialActivate}
+              loading={trialLoading}
+              ineligible={!trialEligible}
+            />
+            {trialError && (
+              <div className="error-box" style={{ marginTop: 10 }}>{trialError}</div>
+            )}
+          </div>
+        )}
+
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <span style={{ fontSize: 12, color: 'var(--muted2)', whiteSpace: 'nowrap' }}>or choose a paid plan</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        </div>
+
+        {/* Paid plan cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
           {Object.values(PLANS).map((plan, i) => (
-            <div key={plan.id} className={`anim-fade-up d${i + 1}`}>
+            <div key={plan.id} className={`anim-fade-up d${i + 2}`}>
               <PlanCard
                 plan={plan}
                 selected={selected === plan.id}
@@ -129,7 +245,7 @@ export default function PlansPage({ onContinue }) {
         </div>
 
         {/* CTA */}
-        <div className="anim-fade-up d4">
+        <div className="anim-fade-up d5">
           <button
             className="btn btn-lime btn-lg btn-full"
             disabled={!selected}
@@ -140,7 +256,7 @@ export default function PlansPage({ onContinue }) {
               : 'Select a plan to continue'}
           </button>
           <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted2)', marginTop: 12 }}>
-            🔒 Secure payment · Cancel anytime · Instant activation
+            🔒 Secure payment · Instant activation
           </p>
         </div>
 

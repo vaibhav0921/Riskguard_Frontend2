@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppProvider, useApp } from './context/AppContext';
-import { logoutAction, setSubscription } from './store/authSlice';
+import { logoutAction } from './store/authSlice';
 import Toast from './components/Toast';
 import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
@@ -16,41 +16,43 @@ import TermsPage from './pages/TermsPage';
 import LandingPage from './pages/LandingPage';
 
 function AppRouter() {
-  // Auth now comes from Redux store
   const user = useSelector(s => s.auth.user);
   const subscription = useSelector(s => s.auth.subscription);
   const dispatch = useDispatch();
-
-  // AppContext still needed for toast, selectedPlan, activateSubscription
   const { setLogoutCallback } = useApp();
 
-  // Restore session only if user was previously on the dashboard (not mid-payment).
-  // localStorage 'rg_session' is set to 'active' only after successful login+subscription.
-  // It is cleared when user is on plans/payment flow so refresh there goes to login.
   const wasOnDashboard = localStorage.getItem('rg_session') === 'active';
 
-  // const [route, setRoute] = useState(wasOnDashboard ? 'app' : 'login');
   const [route, setRoute] = useState(user && subscription && wasOnDashboard ? 'app' : 'landing');
   const [activeTab, setActiveTab] = useState('home');
 
+  // 'trial' intent means user clicked "Try for free" on landing —
+  // after login they go straight to plans with trial pre-highlighted
+  const [loginIntent, setLoginIntent] = useState(null);
+
   const goTo = (r) => setRoute(r);
 
-  // Wire logout to clear Redux state + reset route
   useEffect(() => {
     setLogoutCallback(() => {
       dispatch(logoutAction());
       localStorage.removeItem('rg_session');
-      setRoute('login');
+      setRoute('landing');
       setActiveTab('home');
+      setLoginIntent(null);
     });
   }, [setLogoutCallback, dispatch]);
-
 
   const renderPage = () => {
     switch (route) {
 
       case 'landing':
-        return <LandingPage onGetStarted={() => setRoute('login')} />;
+        return (
+          <LandingPage
+            onGetStarted={() => { setLoginIntent(null); setRoute('login'); }}
+            onTryFree={() => { setLoginIntent('trial'); setRoute('login'); }}
+          />
+        );
+
       case 'login':
         return (
           <LoginPage
@@ -59,9 +61,17 @@ function AppRouter() {
           />
         );
 
-
       case 'plans':
-        return <PlansPage onContinue={() => goTo('payment')} />;
+        return (
+          <PlansPage
+            onContinue={() => goTo('payment')}
+            // Trial success → directly log user into app
+            onTrialSuccess={() => {
+              setActiveTab('home');
+              goTo('app');
+            }}
+          />
+        );
 
       case 'payment':
         return (
@@ -82,11 +92,19 @@ function AppRouter() {
         return (
           <>
             <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
-            {activeTab === 'home' && <DashboardPage onGoGuide={() => setActiveTab('guide')} onSubscriptionExpired={() => { localStorage.removeItem('rg_session'); goTo('plans'); }} />}
-            {activeTab === 'rules' && <SettingsPage />}
-            {activeTab === 'guide' && <EAGuidePage />}
+            {activeTab === 'home' && (
+              <DashboardPage
+                onGoGuide={() => setActiveTab('guide')}
+                onSubscriptionExpired={() => {
+                  localStorage.removeItem('rg_session');
+                  goTo('plans');
+                }}
+              />
+            )}
+            {activeTab === 'rules'   && <SettingsPage />}
+            {activeTab === 'guide'   && <EAGuidePage />}
             {activeTab === 'contact' && <ContactPage />}
-            {activeTab === 'terms' && <TermsPage />}
+            {activeTab === 'terms'   && <TermsPage />}
           </>
         );
 
@@ -112,7 +130,6 @@ function AppRouter() {
 
 export default function App() {
   return (
-    // AppProvider kept for toast + plan selection state during checkout flow
     <AppProvider>
       <AppRouter />
     </AppProvider>

@@ -20,7 +20,7 @@ function Step({ number, title, children, done = false }) {
       }}>
         {done ? '✓' : number}
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontFamily: 'var(--font-display)', fontWeight: 700,
           fontSize: 15, color: 'var(--text)', marginBottom: 8,
@@ -103,8 +103,6 @@ export default function EAGuidePage() {
 
   const handleDownload = () => {
     setDownloading(true);
-    // The .ex5 file should be served from your backend or a static URL
-    // For now we trigger download of a placeholder
     const link = document.createElement('a');
     link.href = `${BACKEND_URL}/api/download/RiskGuard.ex5`;
     link.download = 'RiskGuard.ex5';
@@ -116,19 +114,25 @@ export default function EAGuidePage() {
   };
 
   return (
-    <div style={{ maxWidth: '100%', padding: '32px 40px 80px' }}>
+    /*
+      FIX: Replaced fixed `padding: '32px 40px 80px'` with clamp-based padding.
+      On a 320px mobile screen, 40px × 2 sides = 80px consumed → horizontal overflow.
+      clamp(12px, 4vw, 40px) gives ~12px on 320px, ~16px on 400px, 40px on 1000px+.
+    */
+    <div style={{ maxWidth: '100%', padding: 'clamp(12px, 4vw, 40px)', paddingTop: 32, paddingBottom: 80 }}>
 
       {/* Header */}
       <div className="anim-fade-up d0" style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12, fontSize: 22,
             background: 'rgba(56,189,248,0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
           }}>
             📡
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, color: 'var(--text)' }}>
               EA Setup Guide
             </h2>
@@ -246,10 +250,15 @@ export default function EAGuidePage() {
             <li>In the settings dialog, fill in your details:</li>
           </ol>
 
-          <div className="glass" style={{ borderRadius: 10, padding: 14, marginTop: 10, marginBottom: 10 }}>
+          <div className="glass" style={{ borderRadius: 10, padding: 14, marginTop: 10, marginBottom: 10, overflowX: 'auto' }}>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 10 }}>
               EA Input Parameters
             </div>
+            {/*
+              FIX: Replaced fixed `gridTemplateColumns: '180px 1fr'` with a responsive
+              auto-fit approach. On narrow screens (< ~360px) the 180px column would
+              consume 50%+ of the viewport. Now we use minmax so it wraps gracefully.
+            */}
             {[
               { label: 'USER_EMAIL', value: user?.email || 'your@email.com', desc: 'Your RiskGuard login email' },
               { label: 'BACKEND_URL', value: BACKEND_URL, desc: 'The server address (pre-filled)' },
@@ -258,13 +267,26 @@ export default function EAGuidePage() {
               { label: 'MAX_TRADES_PER_DAY', value: '5', desc: 'Or leave — backend overrides this' },
             ].map(row => (
               <div key={row.label} style={{
-                display: 'grid', gridTemplateColumns: '180px 1fr',
-                gap: 8, padding: '5px 0', borderBottom: '1px solid var(--border)',
-                fontSize: 12, alignItems: 'center',
+                display: 'flex',
+                flexWrap: 'wrap',           // FIX: wraps to 2 lines on narrow screens
+                gap: '4px 12px',
+                padding: '6px 0',
+                borderBottom: '1px solid var(--border)',
+                fontSize: 12,
+                alignItems: 'baseline',
               }}>
-                <span style={{ color: 'var(--lime)', fontFamily: 'monospace' }}>{row.label}</span>
-                <span>
-                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>{row.value}</span>
+                {/* Label column — fixed width on wide, full-width on narrow */}
+                <span style={{
+                  color: 'var(--lime)',
+                  fontFamily: 'monospace',
+                  minWidth: 160,
+                  flexShrink: 0,
+                  wordBreak: 'break-all',
+                }}>
+                  {row.label}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ color: 'var(--text)', fontWeight: 600, wordBreak: 'break-all' }}>{row.value}</span>
                   <span style={{ color: 'var(--muted)', marginLeft: 8 }}>{row.desc}</span>
                 </span>
               </div>

@@ -1,4 +1,34 @@
 /* ─── RESET ──────────────────────────────────────────────── */
+
+/*
+  FIX — html/body/root overflow:
+  The previous rule set `height: auto !important` and `overflow-y: auto !important`
+  on html, body, #root. This prevented the sidebar sticky + main-area-only-scroll
+  pattern from working because:
+    1. The page body itself scrolled (sidebar couldn't stay fixed via sticky).
+    2. `overflow-y: auto !important` defeated the `overflow: hidden` we need on the
+       dashboard shell.
+
+  Correct approach:
+    - html and body stay at their natural height (no explicit height needed).
+    - overflow-x: hidden on both to suppress horizontal bleed.
+    - overflow-y is left at default (visible/auto by browser) — the dashboard
+      shell component owns vertical scroll isolation via its own CSS.
+    - #root: full height so the flex shell can use height:100vh correctly.
+*/
+html,
+body {
+  overflow-x: hidden;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+#root {
+  min-height: 100vh;
+}
+
 *,
 *::before,
 *::after {
@@ -86,17 +116,11 @@
 }
 
 /* ─── BASE ───────────────────────────────────────────────── */
-html {
-  scroll-behavior: smooth;
-}
-
 body {
   font-family: var(--font-body);
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  overflow-x: hidden;
-  overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background 0.25s ease, color 0.25s ease;
@@ -655,6 +679,8 @@ h6 {
   z-index: 9999;
   animation: toastSlide 0.3s ease;
   white-space: nowrap;
+  /* FIX: prevent toast from overflowing viewport on small screens */
+  max-width: calc(100vw - 32px);
 }
 
 .toast-inner {
@@ -669,6 +695,9 @@ h6 {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+  /* FIX: allow text to wrap in toast on very narrow screens */
+  white-space: normal;
+  word-break: break-word;
 }
 
 .toast-success {
@@ -752,4 +781,83 @@ h6 {
   max-width: 680px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* ─── RESPONSIVE HELPERS ─────────────────────────────────── */
+
+/*
+  FIX: Global mobile safeguards.
+  These rules prevent any child from accidentally creating horizontal scroll.
+  Images, tables and pre blocks that exceed their container are clipped/scrolled
+  locally rather than busting the viewport.
+*/
+img,
+video,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+table {
+  /* Tables that are wider than their container get a horizontal scrollbar
+     on the TABLE itself, not the whole page */
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+pre {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Prevent any single unbreakable string from busting a flex/grid cell */
+.break-word {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/*
+  FIX: Responsive page padding utility.
+  Used by pages that need to match the sidebar-less mobile layout.
+  Applies safe horizontal padding that never causes overflow.
+*/
+.page-content-pad {
+  padding-left: clamp(12px, 4vw, 40px);
+  padding-right: clamp(12px, 4vw, 40px);
+}
+
+/* ─── MOBILE BREAKPOINTS ─────────────────────────────────── */
+@media (max-width: 480px) {
+
+  /* Slightly smaller display headings on very small screens */
+  h1 {
+    font-size: clamp(20px, 6vw, 28px);
+  }
+
+  h2 {
+    font-size: clamp(17px, 5vw, 24px);
+  }
+
+  /* Ensure buttons don't overflow their containers */
+  .btn {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* Plan cards — single column on very small phones */
+  .plan-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 640px) {
+
+  /* Give the navbar tabs more breathing room on phones */
+  .nav-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
 }

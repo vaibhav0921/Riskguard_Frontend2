@@ -108,6 +108,9 @@ function ThemeToggle({ theme, toggleTheme }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────
+// FIX: Sidebar uses `position: sticky; top: 0; height: 100vh; overflow-y: auto`
+// so it stays fixed while the main content scrolls independently.
+// On mobile it becomes a fixed drawer (unchanged behaviour).
 function Sidebar({ activeTab, setActiveTab, user, subscription, onLogout, theme, toggleTheme, open, onClose }) {
   const daysLeft = getDaysRemaining(subscription?.expiryDate);
   const isMobile = useMobile();
@@ -127,8 +130,6 @@ function Sidebar({ activeTab, setActiveTab, user, subscription, onLogout, theme,
     if (isMobile && onClose) onClose();
   };
 
-  // On mobile — slide-in drawer with overlay
-  // On desktop — fixed sidebar
   if (isMobile && !open) return null;
 
   return (
@@ -141,20 +142,34 @@ function Sidebar({ activeTab, setActiveTab, user, subscription, onLogout, theme,
         }} />
       )}
 
+      {/*
+        FIX — Sidebar positioning:
+        Desktop: position:sticky + top:0 + height:100vh + overflowY:auto
+          → sidebar sticks to viewport top and scrolls internally if needed
+          → parent must be a flex row WITHOUT its own scroll; only .main-scroll-area scrolls
+        Mobile: position:fixed (unchanged drawer behaviour)
+      */}
       <div style={{
-        width: 240, flexShrink: 0,
+        width: 240,
+        flexShrink: 0,
         background: 'var(--dash-sidebar)',
         borderRight: '1px solid var(--dash-border)',
-        display: 'flex', flexDirection: 'column',
+        display: 'flex',
+        flexDirection: 'column',
+        // KEY FIX: use 100vh height + sticky so sidebar never moves with page scroll
         height: '100vh',
         position: isMobile ? 'fixed' : 'sticky',
-        top: 0, left: 0,
+        top: 0,
+        left: 0,
+        // Sidebar can scroll its own content if viewport is very short
+        overflowY: 'auto',
+        overflowX: 'hidden',
         zIndex: isMobile ? 100 : 10,
         transform: isMobile ? (open ? 'translateX(0)' : 'translateX(-100%)') : 'none',
         transition: 'transform 0.25s ease, background 0.25s ease',
       }}>
         {/* Logo */}
-        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--dash-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--dash-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, background: 'var(--dash-text)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--dash-sidebar)" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
@@ -205,7 +220,7 @@ function Sidebar({ activeTab, setActiveTab, user, subscription, onLogout, theme,
         </div>
 
         {/* User info */}
-        <div style={{ padding: '16px', borderTop: '1px solid var(--dash-border)' }}>
+        <div style={{ padding: '16px', borderTop: '1px solid var(--dash-border)', flexShrink: 0 }}>
           <div style={{ fontSize: 12, color: 'var(--dash-text)', fontWeight: 500, marginBottom: 8, wordBreak: 'break-all' }}>{user?.email || '—'}</div>
           <div style={{ marginBottom: 12 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--dash-active-bg)', color: 'var(--dash-active-txt)', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, border: '1px solid var(--dash-border)' }}>
@@ -237,6 +252,7 @@ function MobileTopBar({ onMenuOpen, user, blocked }) {
       background: 'var(--dash-sidebar)',
       borderBottom: '1px solid var(--dash-border)',
       position: 'sticky', top: 0, zIndex: 50,
+      flexShrink: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={onMenuOpen} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--dash-text)', fontSize: 20, padding: '2px 4px', display: 'flex' }}>☰</button>
@@ -253,9 +269,10 @@ function MobileTopBar({ onMenuOpen, user, blocked }) {
 // ─── Stat Card ────────────────────────────────────────────────────
 function StatCard({ label, value, sub, barValue, barMax, barColor }) {
   return (
-    <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 14, padding: '16px 18px', transition: 'background 0.25s ease' }}>
+    <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 14, padding: '16px 18px', transition: 'background 0.25s ease', minWidth: 0 }}>
       <div style={{ fontSize: 12, color: 'var(--dash-muted)', marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--dash-text)', letterSpacing: '-0.5px', lineHeight: 1.2 }}>{value}</div>
+      {/* FIX: added minWidth:0 + overflow:hidden so long values don't bust card width */}
+      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--dash-text)', letterSpacing: '-0.5px', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
       {sub && <div style={{ fontSize: 11, color: 'var(--dash-subtext)', marginTop: 4 }}>{sub}</div>}
       {barMax !== undefined && <MiniBar value={barValue} max={barMax} color={barColor} />}
     </div>
@@ -338,17 +355,17 @@ function ActiveRules({ rules, eaData }) {
       <div style={{ height: 1, background: 'var(--dash-divider)', marginBottom: 14 }} />
       {rows.map((row, i) => (
         <div key={row.label} style={{ marginBottom: i < rows.length - 1 ? 14 : 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: 'var(--dash-text)' }}>{row.label}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: 13, color: 'var(--dash-text)', minWidth: 0 }}>{row.label}</span>
             {row.barMax !== undefined ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <div style={{ width: 56, height: 4, borderRadius: 2, background: 'var(--dash-border)', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${Math.min(100, (row.barValue / row.barMax) * 100)}%`, background: row.barColor, borderRadius: 2 }} />
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--dash-text)', minWidth: 24, textAlign: 'right' }}>{row.displayVal}</span>
               </div>
             ) : (
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--dash-text)' }}>{row.displayVal}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--dash-text)', flexShrink: 0 }}>{row.displayVal}</span>
             )}
           </div>
           {i < rows.length - 1 && <div style={{ height: 1, background: 'var(--dash-divider)', marginTop: 14 }} />}
@@ -375,12 +392,13 @@ function EAConnection({ user, subscription, eaData, lastSync }) {
       <div style={{ height: 1, background: 'var(--dash-divider)', marginBottom: 14 }} />
       {rows.map((row, i) => (
         <div key={row.label}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: row.dot, flexShrink: 0 }} />
               <span style={{ fontSize: 13, color: 'var(--dash-text)' }}>{row.label}</span>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 500, color: row.color || 'var(--dash-text)', textAlign: 'right', maxWidth: '55%', wordBreak: 'break-all' }}>{row.value}</span>
+            {/* FIX: minWidth:0 + wordBreak so email addresses don't overflow */}
+            <span style={{ fontSize: 13, fontWeight: 500, color: row.color || 'var(--dash-text)', textAlign: 'right', minWidth: 0, wordBreak: 'break-all' }}>{row.value}</span>
           </div>
           {i < rows.length - 1 && <div style={{ height: 1, background: 'var(--dash-divider)' }} />}
         </div>
@@ -427,15 +445,16 @@ function MainContent({ eaData, rules, user, subscription, lastSync }) {
   const lossBarColor = lossPct >= maxLoss ? '#ef4444' : lossPct >= maxLoss * 0.6 ? '#f59e0b' : '#10b981';
   const streakBarColor = trades >= maxStreak ? '#ef4444' : trades >= maxStreak - 1 ? '#f59e0b' : '#3b82f6';
 
-  const pad = isMobile ? '16px 16px 60px' : '32px 32px 60px';
+  // FIX: responsive padding — less horizontal padding on mobile to prevent overflow
+  const pad = isMobile ? '16px 12px 60px' : '32px 32px 60px';
 
   return (
-    <div style={{ flex: 1, padding: pad, background: 'var(--dash-bg)', transition: 'background 0.25s ease' }}>
+    <div style={{ flex: 1, padding: pad, background: 'var(--dash-bg)', transition: 'background 0.25s ease', minWidth: 0 }}>
       <DashboardHeader user={user} lastSync={lastSync} blocked={isBlocked} />
       {isBlocked && <BlockedBanner reason={eaData?.disabledReason} />}
 
       {/* Stat cards — 2 cols on mobile, 4 on desktop */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0,1fr))' : 'repeat(4, minmax(0,1fr))', gap: isMobile ? 12 : 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0,1fr))' : 'repeat(4, minmax(0,1fr))', gap: isMobile ? 10 : 16, marginBottom: 20 }}>
         <StatCard label="Current equity" value={fmt(currentEquity)} sub="Live from MT5" barValue={currentEquity} barMax={currentEquity} barColor="#10b981" />
         <StatCard label="Trades today" value={`${todayTrades} / ${maxTrades}`} sub={todayTrades >= maxTrades ? 'Limit exceeded' : `${maxTrades - todayTrades} remaining`} barValue={todayTrades} barMax={maxTrades} barColor={tradeBarColor} />
         <StatCard label="Daily loss" value={isProfit ? `+${profitPct.toFixed(1)}%` : isBreakEven ? '0%' : `${lossPct.toFixed(1)}%`} sub={`Limit: ${maxLoss}%`} barValue={lossPct} barMax={maxLoss} barColor={lossBarColor} />
@@ -457,9 +476,9 @@ function MainContent({ eaData, rules, user, subscription, lastSync }) {
 // ─── Waiting content ──────────────────────────────────────────────
 function WaitingContent({ onGoGuide, lastSync, user, subscription }) {
   const isMobile = useMobile();
-  const pad = isMobile ? '16px 16px 60px' : '32px 32px 60px';
+  const pad = isMobile ? '16px 12px 60px' : '32px 32px 60px';
   return (
-    <div style={{ flex: 1, padding: pad, background: 'var(--dash-bg)', minHeight: '100vh', transition: 'background 0.25s ease' }}>
+    <div style={{ flex: 1, padding: pad, background: 'var(--dash-bg)', transition: 'background 0.25s ease', minWidth: 0 }}>
       <DashboardHeader user={user} lastSync={lastSync} blocked={false} />
       <div style={{ background: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: 14, padding: isMobile ? '24px 16px' : '40px', textAlign: 'center', marginBottom: 20 }}>
         <div style={{ fontSize: 44, marginBottom: 14 }}>📡</div>
@@ -506,13 +525,20 @@ export default function DashboardPage({ onGoGuide, onSubscriptionExpired, active
   const subscription = useSelector(s => s.auth.subscription);
   const isBlocked = eaData && !eaData.tradingAllowed;
 
+  /*
+    FIX — Body/html overflow:
+    We remove the previously incorrect overflowY override on body/html.
+    The dashboard layout itself controls scrolling via its flex structure.
+    body and html should stay at their default (overflow: auto / visible).
+  */
   useEffect(() => {
     document.body.style.overflowX = 'hidden';
-    document.body.style.overflowY = 'auto';          // ← add this
     document.documentElement.style.overflowX = 'hidden';
-    document.documentElement.style.overflowY = 'auto'; // ← add this
-    document.body.style.background = '';
-    document.documentElement.style.background = '';
+    // Do NOT force overflowY here — let the layout handle it naturally
+    return () => {
+      document.body.style.overflowX = '';
+      document.documentElement.style.overflowX = '';
+    };
   }, []);
 
   if (loading) return (
@@ -523,13 +549,11 @@ export default function DashboardPage({ onGoGuide, onSubscriptionExpired, active
   );
 
   const renderTabContent = () => {
-    // Non-dashboard tabs — wrapped in themed container
-    if (activeTab === 'rules') return <div style={{ flex: 1, background: 'var(--dash-bg)', minHeight: '100vh', transition: 'background 0.25s ease' }}><SettingsPage /></div>;
-    if (activeTab === 'guide') return <div style={{ flex: 1, background: 'var(--dash-bg)', minHeight: '100vh', transition: 'background 0.25s ease' }}><EAGuidePage /></div>;
-    if (activeTab === 'contact') return <div style={{ flex: 1, background: 'var(--dash-bg)', minHeight: '100vh', transition: 'background 0.25s ease' }}><ContactPage /></div>;
-    if (activeTab === 'terms') return <div style={{ flex: 1, background: 'var(--dash-bg)', minHeight: '100vh', transition: 'background 0.25s ease' }}><TermsPage /></div>;
+    if (activeTab === 'rules') return <div style={{ flex: 1, background: 'var(--dash-bg)', minWidth: 0, transition: 'background 0.25s ease' }}><SettingsPage /></div>;
+    if (activeTab === 'guide') return <div style={{ flex: 1, background: 'var(--dash-bg)', minWidth: 0, transition: 'background 0.25s ease' }}><EAGuidePage /></div>;
+    if (activeTab === 'contact') return <div style={{ flex: 1, background: 'var(--dash-bg)', minWidth: 0, transition: 'background 0.25s ease' }}><ContactPage /></div>;
+    if (activeTab === 'terms') return <div style={{ flex: 1, background: 'var(--dash-bg)', minWidth: 0, transition: 'background 0.25s ease' }}><TermsPage /></div>;
 
-    // Home tab — EA status content
     return (!eaConnected || !eaData) ? (
       <WaitingContent onGoGuide={() => { setActiveTab('guide'); setSidebarOpen(false); }} lastSync={lastSync} user={user} subscription={subscription} />
     ) : (
@@ -540,26 +564,73 @@ export default function DashboardPage({ onGoGuide, onSubscriptionExpired, active
   const content = renderTabContent();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--dash-bg)', transition: 'background 0.25s ease', alignItems: 'flex-start' }}>
-      {/* Sidebar — hidden on mobile unless open */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        user={user}
-        subscription={subscription}
-        onLogout={logout}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+    /*
+      FIX — Root layout shell:
+      - `height: 100vh` + `overflow: hidden` on the outer wrapper
+        ensures the viewport never grows beyond the screen.
+      - The sidebar uses `position: sticky; top: 0; height: 100vh`
+        so it anchors to the top and never scrolls with the page.
+      - The right column uses `overflow-y: auto` so ONLY it scrolls.
+      - `alignItems: stretch` (default) so both columns fill the full height.
+      - `minWidth: 0` on the right column prevents flex children from
+        overflowing their container (critical for flex children with text).
+    */
+    <div style={{
+      display: 'flex',
+      height: '100vh',         // exact viewport height — no grow
+      overflow: 'hidden',      // outer shell never scrolls
+      background: 'var(--dash-bg)',
+      transition: 'background 0.25s ease',
+    }}>
+      {/* Sidebar — sticky on desktop, drawer on mobile */}
+      {!isMobile && (
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          user={user}
+          subscription={subscription}
+          onLogout={logout}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Mobile top bar */}
+      {/* Mobile drawer (rendered via Sidebar's own portal logic) */}
+      {isMobile && (
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          user={user}
+          subscription={subscription}
+          onLogout={logout}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/*
+        FIX — Main scroll area:
+        This column is the ONLY thing that scrolls.
+        overflow-y: auto gives it an independent scrollbar.
+        flex: 1 + minWidth: 0 lets it fill remaining space without overflow.
+      */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        {/* Mobile top bar — sticky within this scroll container */}
         {isMobile && <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} user={user} blocked={!!isBlocked} />}
 
         {error && (
-          <div style={{ margin: '16px 16px 0', padding: '12px 16px', background: 'var(--dash-blocked-bg)', border: '1px solid var(--dash-blocked-br)', borderRadius: 10, color: 'var(--rose)', fontSize: 14 }}>
+          <div style={{ margin: '16px 16px 0', padding: '12px 16px', background: 'var(--dash-blocked-bg)', border: '1px solid var(--dash-blocked-br)', borderRadius: 10, color: 'var(--rose)', fontSize: 14, flexShrink: 0 }}>
             {error}
           </div>
         )}

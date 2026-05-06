@@ -81,7 +81,12 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ maxWidth: '100%', padding: '32px 40px 60px' }}>
+    /*
+      FIX: Replaced fixed `padding: '32px 40px 60px'` with responsive CSS class.
+      40px horizontal padding on a 320px mobile = 80px consumed → content overflow.
+      We now use clamp-based padding: generous on desktop, safe on mobile.
+    */
+    <div style={{ maxWidth: '100%', padding: 'clamp(16px, 4vw, 40px)', paddingTop: 32, paddingBottom: 60 }}>
 
       <div style={{ marginBottom: 28 }}>
         <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--dash-text)', marginBottom: 6, letterSpacing: '-0.5px' }}>
